@@ -68,6 +68,49 @@ app.post(proxyUrl, (req, res) => {
         }
 
     } else {
+        logRequestToScreen("ERR",req.query.authorization,`Unauthorized POST from ${req.ip}`)
+        res.sendStatus(401); //authentication failed (unauthorized)
+    }
+})
+
+// responds to get requests
+app.get(proxyUrl, (req, res) => {
+
+    if (checkAuth(req.query.authorization) === true) { //authentication check
+        
+        switch (req.query.request) { //action parameter switch (add new actions here)
+            case "status":
+                logRequestToScreen("INF",req.query.authorization,`Responded to status request from ${req.ip}`)
+                res.send(`Running OK! \nWorking Directory: ${process.argv[1]} \nPort: ${port} \nReverse Proxy Path: ${proxyUrl} \nYour IP: ${req.ip} \nHTTP Version: ${req.httpVersion}`);
+                break;
+            
+            case "fullLog":
+                logRequestToScreen("INF",req.query.authorization,`Sent full log to ${req.ip}`)
+                res.send(fs.readFileSync('log.txt','utf-8'))
+                break;
+
+            case "arduino":
+                logRequestToScreen("INF",req.query.authorization,`GET Arduino: ${req.query.config}`)
+
+                switch (req.query.config) {
+                    case "full": //would return full arduino configuration
+                        res.send(null);
+                    return true;
+
+                    default:
+                        logRequestToScreen("ERR",req.query.authorization,"Unable to process Arduino configuration request.");
+                        res.sendStatus(500);
+                        return true; // Prevents double res.sendStatus(500);
+                }
+
+            default:
+                logRequestToScreen("ERR",req.query.authorization,"Unable to process query."); //if action doesnt exist, respond with server error
+                res.sendStatus(500);
+                break;  
+        }
+
+    } else {
+        logRequestToScreen("ERR",req.query.authorization,`Unauthorized GET from ${req.ip}`)
         res.sendStatus(401); //authentication failed (unauthorized)
     }
 })
@@ -75,7 +118,7 @@ app.post(proxyUrl, (req, res) => {
 // get date and time as string
 // TODO: make less messy
 function getLoggableDateTime() {
-    return date.getFullYear()+"-"+date.getMonth()+"-"+date.getDate()+" "+date.getHours()+":"+date.getMinutes()+":"+date.getSeconds();
+    return `${date.getFullYear()}-${(date.getMonth()+1)}-${date.getDate()} ${date.getHours()}:${date.getMinutes()}:${date.getSeconds()}`
 }
 
 //yes
@@ -89,11 +132,11 @@ function checkAuth(auth) {
 
 //these just write the same thing to different places (maybe make this a class or consolidate?)
 function logRequestToDisk(code,authKey,message) {
-    fs.appendFileSync('log.txt',`${code} | ${getLoggableDateTime()} | Auth Key: ${authKey} | ${message} \n`);
+    fs.appendFileSync('log.txt',`${code} | ${getLoggableDateTime()} | API Key: ${authKey} | ${message} \n`);
 }
 
 function logRequestToScreen(code,authKey,message) {
-    console.log(`${code} | ${getLoggableDateTime()} | Auth Key: ${authKey} | ${message}`);
+    console.log(`${code} | ${getLoggableDateTime()} | API Key: ${authKey} | ${message}`);
 }
 
 // start server
