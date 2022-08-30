@@ -2,3 +2,4 @@ authorization.json
 log.txt
 node_modules/
 package-lock.json
+configuration.json
