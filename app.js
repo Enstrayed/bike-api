@@ -4,6 +4,7 @@ const fs = require('fs'); // Provides filesystem modification
 const randkey = require('random-key') // Provides "random" API key generation
 const date = new Date; // Provides Date and Time
 const app = express()
+timeSinceAPIKeyRequest = 0;
 
 // launch argument check
 if (process.argv[2] === undefined || process.argv[3] === undefined) {
@@ -84,9 +85,21 @@ app.get(proxyUrl, (req, res) => {
                 res.send(`Running OK! \nWorking Directory: ${process.argv[1]} \nPort: ${port} \nReverse Proxy Path: ${proxyUrl} \nYour IP: ${req.ip} \nHTTP Version: ${req.httpVersion}`);
                 break;
             
-            case "fullLog":
+            case "logfile":
                 logRequestToScreen("INF",req.query.authorization,`Sent full log to ${req.ip}`)
                 res.send(fs.readFileSync('log.txt','utf-8'))
+                break;
+
+            case "apikeys":
+                if (Date.now() > timeSinceAPIKeyRequest+300000) { //timeout to only allow request every 5 minutes
+                    timeSinceAPIKeyRequest = Date.now()
+                    logRequestToScreen("INF",req.query.authorization,`Sent all API keys to ${req.ip}!!!`)
+                    res.send(allowedAuths.allowedKeys);
+                } else {
+                    timeSinceAPIKeyRequest = Date.now()
+                    logRequestToScreen("ERR",req.query.authorization,`${req.ip} attempted to get all API keys more than once in 5 minutes`)
+                    res.sendStatus(420);
+                }
                 break;
 
             case "arduino":
