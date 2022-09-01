@@ -3,18 +3,20 @@ const express = require('express') // Provides core of API
 const fs = require('fs'); // Provides filesystem modification
 const randkey = require('random-key') // Provides "random" API key generation
 const date = new Date; // Provides Date and Time
+const fetch = import('node-fetch') //Provides fetch support
 const app = express()
 timeSinceAPIKeyRequest = 0;
 
 // launch argument check
-if (process.argv[2] === undefined || process.argv[3] === undefined) {
-    console.log(`ERR | ${getLoggableDateTime()} | You need to pass a port and proxy URL!`);
+if (process.argv[2] === undefined || process.argv[3] === undefined || process.argv[4]) {
+    console.log(`ERR | ${getLoggableDateTime()} | You need to pass a port, proxy URL and Discord webhook URL!`);
     process.exit(1);
 }
 
 // set listening port and url listen for reverse proxy
 const port = process.argv[2]; //no input validation
 const proxyUrl = process.argv[3]; //no input validation
+const discordWebhookURL = process.argv[4] //no input validation (how even?)
 
 // regenerate api keys check
 allowedAuths = JSON.parse(fs.readFileSync('authorization.json', 'utf8'));
@@ -43,15 +45,20 @@ app.post(proxyUrl, (req, res) => {
 
                 switch (req.query.log) { //log parameter switch (add new loggables here)
 
-                    case "bikeTamperTrip":
+                    case "biketamperTrip":
                         logRequestToDisk("INF",req.query.authorization,"Bike Tamper Alarm Tripped.");
                         statusToSend = 200 //always respond with 200 (OK) when completed successfully
                         //additional actions here
                         break;
 
-                    case "bikeDisarmed":
+                    case "bikedisarmed":
                         logRequestToDisk("INF",req.query.authorization,"Bike was disarmed.");
                         statusToSend = 200
+                        break;
+                        
+                    case "bumpnotification":
+                        logRequestToDisk("INF",req.query.authorization,`Discord notification bumped, message: `);
+                        discordWebhookSend(req.query.webhookmessage,req.query.authorization);
                         break;
 
                     default: //if loggable does not exist, respond with server error
@@ -150,6 +157,23 @@ function logRequestToDisk(code,authKey,message) {
 
 function logRequestToScreen(code,authKey,message) {
     console.log(`${code} | ${getLoggableDateTime()} | API Key: ${authKey} | ${message}`);
+}
+
+function discordWebhookSend(message,apikeylog) {
+    logRequestToScreen("INF",apikeylog,`Sent Discord webhook w/ contents: ${message}`)
+    fetch(discordWebhookURL, {
+        method: "POST",
+        headers: {
+            'Content-type': 'application/json'
+        },
+        body: {
+            username: "Bike API",
+            avatar_url: "",
+            content: message
+        }
+    }).then(res => {
+        console.log(res);
+    }) 
 }
 
 // start server
