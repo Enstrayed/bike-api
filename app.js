@@ -3,7 +3,7 @@ const express = require('express') // Provides core of API
 const fs = require('fs'); // Provides filesystem modification
 const randkey = require('random-key') // Provides "random" API key generation
 const date = new Date; // Provides Date and Time
-const fetch = import('node-fetch') //Provides fetch support
+const fetch = require('node-fetch') //Provides fetch support
 const app = express()
 timeSinceAPIKeyRequest = 0;
 
@@ -40,33 +40,28 @@ app.post(proxyUrl, (req, res) => {
     if (checkAuth(req.query.authorization) === true) { //authentication check
 
         switch (req.query.action) { //action parameter switch (add new actions here)
+            case "bumpnotification":
+                logRequestToDisk("INF",req.query.authorization,`Discord notification bumped, message: `);
+                discordWebhookSend(req.query.webhookmessage,req.query.authorization);
+                return true;
+
+
             case "log":
                 logRequestToScreen("INF",req.query.authorization,`Log: ${req.query.log}`)
-
                 switch (req.query.log) { //log parameter switch (add new loggables here)
 
-                    case "biketamperTrip":
+                    case "biketamper":
                         logRequestToDisk("INF",req.query.authorization,"Bike Tamper Alarm Tripped.");
                         statusToSend = 200 //always respond with 200 (OK) when completed successfully
                         //additional actions here
-                        break;
-
-                    case "bikedisarmed":
-                        logRequestToDisk("INF",req.query.authorization,"Bike was disarmed.");
-                        statusToSend = 200
-                        break;
-                        
-                    case "bumpnotification":
-                        logRequestToDisk("INF",req.query.authorization,`Discord notification bumped, message: `);
-                        discordWebhookSend(req.query.webhookmessage,req.query.authorization);
-                        break;
+                        return true; 
 
                     default: //if loggable does not exist, respond with server error
                         logRequestToScreen("ERR",req.query.authorization,"Unable to process log request.");
                         statusToSend = 500; // TODO: find more appropriate status code
+                        break;
                 }
 
-                res.sendStatus(statusToSend); // probably unnecessary
                 break;
 
             default:
